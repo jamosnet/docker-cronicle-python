@@ -1,13 +1,17 @@
-name: Manual Build with Version
+name: Manual Build (Merged Repo)
 
 on:
-  # 这一段意味着：允许手动点击触发，并弹窗让你输入版本号
   workflow_dispatch:
     inputs:
       version:
-        description: '请输入版本号 (例如: v0.9.101)'
+        description: '请输入版本号 (例如: v0.9.102)'
         required: true
-        default: 'v0.9.101'
+        default: 'v0.9.102'
+
+# 这里定义你那个唯一的、统一的仓库名
+# 建议新建一个名字，比如: cronicle-python
+env:
+  IMAGE_NAME: cronicle-python
 
 jobs:
   build-and-push:
@@ -26,7 +30,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # ====================================================
-      # 1. Alpine 版本
+      # 1. Alpine 版本 -> 标签: v0.9.102-alpine
       # ====================================================
       - name: Build Alpine Image
         uses: docker/build-push-action@v5
@@ -34,11 +38,11 @@ jobs:
           context: .
           file: ./Dockerfile.alpine
           push: true
-          # 这里会自动读取你在弹窗里输入的 version
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cronicle-python-alpine:${{ inputs.version }}
+          # 注意看这里：使用了 unified 的 IMAGE_NAME，并在版本号后面加了 -alpine
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}-alpine
 
       # ====================================================
-      # 2. Lite 版本
+      # 2. Lite 版本 -> 标签: v0.9.102-lite
       # ====================================================
       - name: Build Lite Image
         uses: docker/build-push-action@v5
@@ -46,10 +50,10 @@ jobs:
           context: .
           file: ./Dockerfile.lite
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cronicle-python-lite:${{ inputs.version }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}-lite
 
       # ====================================================
-      # 3. Playwright 版本
+      # 3. Playwright 版本 -> 标签: v0.9.102-playwright
       # ====================================================
       - name: Build Playwright Image
         uses: docker/build-push-action@v5
@@ -57,4 +61,17 @@ jobs:
           context: .
           file: ./Dockerfile.playwright
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cronicle-python-playwright:${{ inputs.version }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}-playwright
+
+      # ====================================================
+      # (可选) 4. 设置默认版本
+      # 如果你希望用户只输 v0.9.102 (不带后缀) 时，默认下载的是 alpine 版本，
+      # 可以取消下面这一段的注释（删除每行前面的 #）
+      # ====================================================
+      # - name: Build Default (Alpine) Alias
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     file: ./Dockerfile.alpine
+      #     push: true
+      #     tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
