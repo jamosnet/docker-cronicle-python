@@ -1,0 +1,50 @@
+# 1. 基础镜像
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# 2. 安装系统工具 + Node.js (Cronicle 依赖)
+# 合并安装以减少层数
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nano curl wget htop telnet iputils-ping net-tools iproute2 \
+    gnupg procps git ca-certificates \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 3. 安装 Playwright Python 库
+RUN pip install --no-cache-dir playwright
+
+# 4. 【核心变化】只安装 chromium-headless-shell
+# --with-deps 会安装 shell 运行所需的 linux 库
+# 顺便删掉 ffmpeg (如果不录屏)，节省空间
+RUN playwright install chromium-headless-shell --with-deps && \
+    rm -rf /ms-playwright/ffmpeg-* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 5. 安装 Cronicle
+WORKDIR /opt/cronicle
+RUN curl -L https://github.com/jhuckaby/Cronicle/archive/refs/tags/v0.9.101.tar.gz | tar zxvf - --strip-components 1 && \
+    npm install && \
+    node bin/build.js dist
+
+# 6. 配置
+VOLUME ["/opt/cronicle/data", "/opt/cronicle/logs", "/opt/cronicle/plugins"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 3012
+
+CMD ["/entrypoint.sh"]
+
+
+
+##  docker build -t cronicle-python-playwright  -f Dockerfile .
+##  docker run -it cronicle-python-playwright bash
+
+
+

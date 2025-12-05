@@ -1,0 +1,42 @@
+# 1. 基础镜像：Python 3.11 Alpine
+FROM python:3.11-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# 2. 安装系统依赖
+# Alpine 使用 apk，包名和 Debian 不太一样
+# 必须安装 procps (Cronicle 依赖 ps 命令) 和 bash (Cronicle 脚本依赖 bash)
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    bash \
+    curl \
+    wget \
+    git \
+    procps \
+    nano \
+    htop \
+    tzdata net-tools iproute2
+
+# 3. 安装 Cronicle
+WORKDIR /opt/cronicle
+RUN curl -L https://github.com/jhuckaby/Cronicle/archive/refs/tags/v0.9.101.tar.gz | tar zxvf - --strip-components 1 && \
+    npm install && \
+    node bin/build.js dist
+
+# 4. 配置
+VOLUME ["/opt/cronicle/data", "/opt/cronicle/logs", "/opt/cronicle/plugins"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 3012
+
+CMD ["/entrypoint.sh"]
+
+
+##  docker build -t cronicle-python-alpine  -f Dockerfile.alpine .
+##  docker run -it cronicle-python-alpine bash
+
+
+

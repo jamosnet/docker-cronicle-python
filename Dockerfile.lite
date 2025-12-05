@@ -1,0 +1,40 @@
+# 1. 基础镜像：Python 3.11 Slim Bookworm
+# 和你的 Playwright 镜像保持一致，维护方便
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# 2. 安装系统工具 + Node.js
+# 依然保留了 nano, curl, htop 等好用的工具
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nano curl wget htop telnet iputils-ping net-tools iproute2 \
+    gnupg procps git ca-certificates \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 3. 安装 Cronicle
+WORKDIR /opt/cronicle
+RUN curl -L https://github.com/jhuckaby/Cronicle/archive/refs/tags/v0.9.101.tar.gz | tar zxvf - --strip-components 1 && \
+    npm install && \
+    node bin/build.js dist
+
+# 4. 配置
+VOLUME ["/opt/cronicle/data", "/opt/cronicle/logs", "/opt/cronicle/plugins"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 3012
+
+CMD ["/entrypoint.sh"]
+
+
+
+##  docker build -t cronicle-python-lite  -f Dockerfile.lite .
+##  docker run -it cronicle-python-lite bash
+
+
+
